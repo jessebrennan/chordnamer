@@ -1,9 +1,12 @@
+import re
+import copy
 from typing import List, Tuple, Union
 from enum import IntEnum
 from collections import namedtuple
 
-# define some handy dandy types
-noteType = Union['ChordNote', None]
+
+sharp = u"\u266F"
+flat = u"\u266D"
 
 
 class NoSuchChordException(ValueError):
@@ -33,6 +36,13 @@ class Note(IntEnum):
     B = 11
     Cf = 11
 
+    def pretty_name(self):
+        if 's' in self.name:
+            return self.name[0] + sharp
+        if 'f' in self.name:
+            return self.name[0] + flat
+        return self.name
+
 
 class SpecificNote:
     """
@@ -55,9 +65,9 @@ class SpecificNote:
         """
         Note: returns a NEW note
         """
-        new_note = (self.note + interval) % 12
+        new_note = (self.note.value + interval) % 12
         new_octave = self.octave + (self.note + interval) // 12
-        return self.__init__(Note(new_note), new_octave)
+        return SpecificNote(Note(new_note), new_octave)
 
     def shift_interval(self, interval: int):
         """
@@ -65,7 +75,7 @@ class SpecificNote:
         """
         new_note = (self.note + interval) % 12
         self.octave = self.octave + (self.note + interval) // 12
-        self.note = new_note
+        self.note = Note(new_note)
         return self
 
 
@@ -79,6 +89,10 @@ class CompressedChord:
         assert len(bin_notes) == 12, 'str must be length 12'
         # notes is a list of booleans
         self.notes = list(map(lambda x: int(x) == 1, bin_notes))
+        self._hash = bin_notes
+
+    def __hash__(self):
+        return self._hash.__hash__()
 
     @classmethod
     def from_int(cls, bin_notes: int):
@@ -104,7 +118,7 @@ class CompressedChord:
     @staticmethod
     def rotate(notes: List[bool]):
         """
-        rotates to the left
+        rotates to the right
         """
         tail = notes.pop()
         notes.insert(0, tail)
@@ -113,18 +127,16 @@ class CompressedChord:
         """
         If the chords don't match, return None. Otherwise, return the tonic
         """
-        for step in range(12):
-            if self == other:
-                return Note((other.tonic + step) % 12)
+        for step, rotation in enumerate(self):
+            if rotation == other.notes:
+                return Note((other.tonic - step) % 12)
         return None
-
-
 
     def __iter__(self):
         """
         iterating yields all possible orientations of a chord
         """
-        notes = self.notes
+        notes = copy.copy(self.notes)
         for i in range(12):
             yield notes
             self.rotate(notes)
@@ -142,12 +154,12 @@ class CCompressedChord(CompressedChord):
         super().__init__(bin_notes)
 
 
-ChordName = namedtuple('ChordName', ['name', 'abv'])
+ChordTypeName = namedtuple('ChordName', ['name', 'abv'])
 
 
 chord_types = [
     # major chords
-    ('100010010000', 'major', ''),
+    ('100100010000', 'major', ''),
 
     ('100010010001', 'major seven', 'maj7'),
     ('100010000001', 'major seven (no 5)', 'maj7'),
@@ -161,7 +173,7 @@ chord_types = [
     ('101011010101', 'major thirteen (but you\'d be happier without the 11)', 'maj13'),
 
     ('100010010100', 'six', '6'),
-    ('100010000100', 'six (no 5)', '6'),
+    # ('100010000100', 'six (no 5)', '6'),
 
     ('101010010100', 'six/nine', '6/9'),
     ('101010000100', 'six/nine (no 5)', '6/9'),
@@ -185,7 +197,6 @@ chord_types = [
 
     # suspended chords
     ('100001010000', 'suspended four', 'sus4'),
-    ('100001000000', 'suspended four (no 5)', 'sus4'),
 
     ('101000010000', 'suspended two', 'sus2'),
     ('101000000000', 'suspended two (no 5)', 'sus2'),
@@ -235,25 +246,44 @@ chord_types = [
     # augmented chords
     ('100010001000', 'augmented', 'aug'),
     ('100010001001', 'augmented 7', '7#5'),
+
+    # other chords
+    ('100000010000', 'five', '5'),
+
     ]
-chord_types = {CompressedChord(notes): ChordName(name, abv) for notes, name, abv in chord_types}
+chord_types = {CCompressedChord(notes): ChordTypeName(name, abv) for notes, name, abv in chord_types}
+
+
+class ChordName:
+    """
+    basic chord info, type and note
+
+    Just used for outputting strings
+    """
+    def __init__(self, chord_type: 'CompressedChord', note: 'Note'):
+        self.name, self.abv = chord_types[chord_type]
+        self.note = note.pretty_name()
+
+    def __str__(self):
+        return '{}{}'.format(self.note, self.abv)
+
+    def long_name(self):
+        return '{} {}'.format(self.note, self.name)
 
 
 class FullChord:
     def __init__(self, notes: List[SpecificNote]):
         self.notes = notes
 
-    def get_type(self) -> Tuple['CompressedChord', 'Note']:
+    def __iter__(self):
+        """
+        returns all possible compressed chord matches
+        """
         compressed_chord = CompressedChord.from_full_chord(self)
         for chord_type in chord_types:
             tonic = compressed_chord.match_type(chord_type)
-            if tonic:
-                return chord_type, tonic
-        raise NoSuchChordException('eat cock', chord=self)
-
-    def get_full_name(self):
-        comp_chord, tonic = self.get_type()
-        return tonic.name + ' ' + chord_types[comp_chord].name
+            if tonic is not None:
+                yield ChordName(chord_type, tonic)
 
 
 class StringedThing:
@@ -281,14 +311,36 @@ class StringedThing:
             frets.append(fret)
         return frets
 
-    def get_chord(self, chord_str: str):
+    def get_chords(self, chord_str: str):
         """
         takes a list of frets and outputs a chord
         """
         frets = self.parse_input(chord_str)
-        full_notes = [note.add_interval(fret) for note, fret in zip(self.strings, frets)]
+        full_notes = [note.add_interval(fret)
+                      for note, fret in zip(self.strings, frets)
+                      if fret is not None]
 
         return FullChord(full_notes)
+
+
+def parse_tuning(tuning) -> List['SpecificNote']:
+    def parse_note(full_note):
+        match = re.search('(?P<note>[A-Ga-g])(?P<octave>[0-9]*)', full_note).groupdict()
+        return SpecificNote(Note[match['note']], int(match['octave']))
+    notes = tuning.split()
+    return list(map(parse_note, notes))
+
+
+if __name__ == '__main__':
+    standard = 'E2 A3 D3 G3 B4 E4'
+    guitar = StringedThing(parse_tuning(standard))
+    in_chord = 'x355xx'
+    out = list(guitar.get_chords(in_chord))
+    if len(out) == 0:
+        print('sucks, no matches')
+    else:
+        for choice in out:
+            print(choice.long_name())
 
 
 # TODO:
