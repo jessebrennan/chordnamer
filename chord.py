@@ -1,6 +1,6 @@
 import re
 import copy
-from typing import List, Tuple, Union
+from typing import List, Union
 from enum import IntEnum
 from collections import namedtuple
 
@@ -306,7 +306,11 @@ class StringedThing:
         """
         takes something like '332010x and turns it into [3, 3, 2, 0, 1, 0, None]
         """
-        assert len(chord_str) == len(self.strings), 'input must have length {}'.format(self.strings)
+        # deal with space separated case
+        if len(chord_str.split()) == len(self.strings):
+            chord_str = chord_str.split
+        else:
+            assert len(chord_str) == len(self.strings), 'input must have length {}'.format(self.strings)
         frets = []
         for note_str in chord_str:
             if note_str == 'x' or note_str == 'X':
@@ -340,16 +344,77 @@ def parse_tuning(tuning) -> List['SpecificNote']:
     return list(map(parse_note, notes))
 
 
+class Interactive:
+    def __init__(self):
+        standard = 'E2 A3 D3 G3 B4 E4'
+        self.instrument = StringedThing(parse_tuning(standard))
+
+    def main_loop(self):
+        while True:
+            print('Enter a chord')
+            text = input()
+            if text == 'quit':
+                print('Goodbye!')
+                exit(0)
+            try:
+                full_chord = self.instrument.get_chords(text)
+                out = list(full_chord)
+                if len(out) == 0:
+                    print('sucks, no matches')
+                else:
+                    for choice in out:
+                        print(choice.long_name())
+            except Exception as e:
+                print('Whoops! you messed up\n')
+                print(e)
+
+    def change_instrument(self):
+        while True:
+            print('enter the names of the notes of the strings in order from left to right.\n'
+                  '\n'
+                  'for example, guitar looks like \'E2 A3 D3 G3 B4 E4\'\n'
+                  '\n'
+                  'To cancel, just hit <enter>.')
+            strings = input()
+            if strings == '':
+                return
+            try:
+                strings = parse_tuning(strings)
+                self.instrument = StringedThing(strings)
+            except Exception as e:
+                print('Whoops! you messed up')
+                print(e)
+                pass
+
+    def welcome(self):
+        print('Welcome to the awesome chord namer tool thingy\n'
+              '\n'
+              'The default instrument is guitar. Do you want to change this?\n'
+              'Type \'yes\' to change, or type anything else to not change\n')
+        answer = input("change instrument?")
+        if answer == 'yes':
+            self.change_instrument()
+        print("Now you're ready to start! enter the frets of the chord from left to right\n"
+              "\n"
+              "for example E major on guitar could look like:\n"
+              "     '022100' or\n"
+              "     '0 2 2 1 0 0' or even\n"
+              "     '0 2 2 1 0 X'")
+        self.main_loop()
+
+
 if __name__ == '__main__':
     standard = 'E2 A3 D3 G3 B4 E4'
     guitar = StringedThing(parse_tuning(standard))
-    in_chord = 'x355xx'
+    in_chord = '022100'
     out = list(guitar.get_chords(in_chord))
     if len(out) == 0:
         print('sucks, no matches')
     else:
         for choice in out:
             print(choice.long_name())
+    # console = Interactive()
+    # console.welcome()
 
 
 # TODO:
