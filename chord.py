@@ -159,7 +159,7 @@ ChordTypeName = namedtuple('ChordName', ['name', 'abv'])
 
 chord_types = [
     # major chords
-    ('100100010000', 'major', ''),
+    ('100010010000', 'major', ''),
 
     ('100010010001', 'major seven', 'maj7'),
     ('100010000001', 'major seven (no 5)', 'maj7'),
@@ -310,7 +310,7 @@ class StringedThing:
         if len(chord_str.split()) == len(self.strings):
             chord_str = chord_str.split
         else:
-            assert len(chord_str) == len(self.strings), 'input must have length {}'.format(self.strings)
+            assert len(chord_str) == len(self.strings), 'input must have length {}'.format(len(self.strings))
         frets = []
         for note_str in chord_str:
             if note_str == 'x' or note_str == 'X':
@@ -332,7 +332,6 @@ class StringedThing:
         full_notes = [note.add_interval(fret)
                       for note, fret in zip(self.strings, frets)
                       if fret is not None]
-
         return FullChord(full_notes)
 
 
@@ -404,17 +403,8 @@ class Interactive:
 
 
 if __name__ == '__main__':
-    standard = 'E2 A3 D3 G3 B4 E4'
-    guitar = StringedThing(parse_tuning(standard))
-    in_chord = '022100'
-    out = list(guitar.get_chords(in_chord))
-    if len(out) == 0:
-        print('sucks, no matches')
-    else:
-        for choice in out:
-            print(choice.long_name())
-    # console = Interactive()
-    # console.welcome()
+    console = Interactive()
+    console.welcome()
 
 
 # TODO:
