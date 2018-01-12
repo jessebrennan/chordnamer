@@ -275,15 +275,24 @@ class FullChord:
     def __init__(self, notes: List[SpecificNote]):
         self.notes = notes
 
-    def __iter__(self):
+    def get_matches(self):
         """
-        returns all possible compressed chord matches
+        returns all possible chord matches as a list
         """
+        chords = []
         compressed_chord = CompressedChord.from_full_chord(self)
         for chord_type in chord_types:
             tonic = compressed_chord.match_type(chord_type)
             if tonic is not None:
-                yield ChordName(chord_type, tonic)
+                chords.append(ChordName(chord_type, tonic))
+        return chords
+
+    def __iter__(self):
+        """
+        returns all possible compressed chord matches
+        """
+        for c in self.get_matches():
+            yield c
 
 
 class StringedThing:
