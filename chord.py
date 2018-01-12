@@ -308,7 +308,7 @@ class StringedThing:
         """
         # deal with space separated case
         if len(chord_str.split()) == len(self.strings):
-            chord_str = chord_str.split
+            chord_str = chord_str.split()
         else:
             assert len(chord_str) == len(self.strings), 'input must have length {}'.format(len(self.strings))
         frets = []

@@ -4,12 +4,12 @@ HELLO, WHAT IS THIS
 Welcome to my shitty chord namer program. The goal was to accomplish something
 similar to [JGuitar's chord namer](https://jguitar.com/chordname) or (before
 flash went out of style) 
-[All-Guitar-Chord's tool](http://www.all-guitar-chords.com/chord_name.php)
-except with python 3.6, on the commandline and probably worse.
+[All-Guitar-Chord's tool](http://www.all-guitar-chords.com/chord_name.php),\
+except with python 3.6, on the commandline, and probably worse.
 
 If you haven't bothered to click any of those links, this program takes in a
 list of numbers representing the frets you are fingering on the guitar (or
-any other stringed instrument, more on this later) and and gives you some ideas
+any other stringed instrument, more on this later) and gives you some ideas
 of what other people may call this chord.
 
 How to Use
@@ -20,7 +20,7 @@ Install and Start
 
 1. First of all, you need at least python 3.6ish. 
 
-2. Then you can download of clone the only really important file, `chord.py`. 
+2. Then you can download or clone the only really important file, `chord.py`. 
 
 3. There's a couple ways to proceed from here, but the one I understand best
    is to type
